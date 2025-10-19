@@ -75,7 +75,7 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/policies`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
