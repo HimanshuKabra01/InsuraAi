@@ -24,6 +24,8 @@ const storage = new CloudinaryStorage({
   params: {
     folder: "insuraai_uploads",
     allowed_formats: ["jpg", "png", "pdf"],
+    resource_type: "auto", // ✅ ensures PDF uploads work
+    public_id: `${Date.now()}-${path.parse(file.originalname).name}`, // ✅ unique name
   },
 });
 
@@ -81,7 +83,7 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
 
     res.status(201).json(policy);
   } catch (error) {
-    console.error("❌ Create policy error:", error.message);
+    console.error("❌ Create policy error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
