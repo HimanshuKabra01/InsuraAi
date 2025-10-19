@@ -21,15 +21,18 @@ cloudinary.config({
 // ✅ Configure multer to use Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "insuraai_uploads",
-    allowed_formats: ["jpg", "png", "pdf"],
-    resource_type: "auto", // ✅ ensures PDF uploads work
-    public_id: `${Date.now()}-${path.parse(file.originalname).name}`, // ✅ unique name
+  params: async (req, file) => {
+    return {
+      folder: "insuraai_uploads",
+      allowed_formats: ["jpg", "png", "pdf"],
+      resource_type: "auto",
+      public_id: `${Date.now()}-${path.parse(file.originalname).name}`,
+    };
   },
 });
 
 const upload = multer({ storage });
+
 
 
 // 🟢 Create new policy (with optional document upload)
