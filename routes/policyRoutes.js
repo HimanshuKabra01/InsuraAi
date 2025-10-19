@@ -68,6 +68,8 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       renewalDueDate,
       createdBy: req.user.id,
     };
+    console.log("Received body:", req.body);
+    console.log("Received file:", req.file);
 
     // ✅ If file uploaded, attach Cloudinary URL instead of local path
     if (req.file && req.file.path) {

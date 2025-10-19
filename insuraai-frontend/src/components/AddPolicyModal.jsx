@@ -75,13 +75,20 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formDataObj,
-      });
+      const formDataToSend = new FormData();
+Object.entries(cleanedData).forEach(([key, value]) => {
+  if (value !== undefined && value !== "") formDataToSend.append(key, value);
+});
+if (file) formDataToSend.append("file", file); // ✅ attach the file
+
+const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+  body: formDataToSend, // ✅ must be FormData for Cloudinary
+});
+
 
       const result = await res.json();
       console.log("📥 Backend response:", result);
