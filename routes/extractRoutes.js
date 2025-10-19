@@ -12,7 +12,7 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  
 });
 
 router.post("/extract", upload.single("file"), async (req, res) => {
