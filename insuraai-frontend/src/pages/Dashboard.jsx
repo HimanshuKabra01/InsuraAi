@@ -374,6 +374,16 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+        {/* 👇 Mobile Logout Button (shown only on small screens) */}
+<div className="md:hidden mt-10 flex justify-center pb-10">
+  <button
+    onClick={logout}
+    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-red-600 border border-red-500 rounded-lg hover:bg-red-50 transition"
+  >
+    <LogOut className="w-4 h-4" /> Logout
+  </button>
+</div>
+
       </main>
 
       {showForm && (
