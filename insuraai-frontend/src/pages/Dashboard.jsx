@@ -29,7 +29,7 @@ export default function Dashboard() {
   const fetchPolicies = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}api/policies`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}api/policies`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -99,7 +99,7 @@ export default function Dashboard() {
     const ok = window.confirm("Delete this policy permanently?");
     if (!ok) return;
     try {
-      const res = await fetch(`${API}/api/policies/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -117,7 +117,7 @@ export default function Dashboard() {
 
   const renewPolicy = async (id) => {
     try {
-      const res = await fetch(`${API}/api/policies/${id}/renew`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies/${id}/renew`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
