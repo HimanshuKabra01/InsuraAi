@@ -29,7 +29,7 @@ export default function Dashboard() {
   const fetchPolicies = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}api/policies`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
