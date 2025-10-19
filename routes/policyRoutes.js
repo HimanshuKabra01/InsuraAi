@@ -3,37 +3,36 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import Policy from "../models/policy.js";
 import { sendEmail } from "../config/email.js";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
-import dotenv from "dotenv";
 import path from "path";
-dotenv.config()
+
 const router = express.Router();
 
 
 // Create new policy
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// ✅ Configure multer to use Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: "insuraai_uploads",
-      allowed_formats: ["jpg", "png", "pdf"],
-      resource_type: "auto",
-      public_id: `${Date.now()}-${path.parse(file.originalname).name}`,
-    };
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
 
-const upload = multer({ storage });
-
-
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+    ];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Only PDF, JPG, and PNG files are allowed!"));
+  },
+});
 
 // 🟢 Create new policy (with optional document upload)
 router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
@@ -73,12 +72,10 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       renewalDueDate,
       createdBy: req.user.id,
     };
-    console.log("Received body:", req.body);
-    console.log("Received file:", req.file);
 
-    // ✅ If file uploaded, attach Cloudinary URL instead of local path
-    if (req.file && req.file.path) {
-      policyData.fileUrl = req.file.path; // Cloudinary auto-returns hosted URL
+    // If file uploaded, attach file URL
+    if (req.file) {
+      policyData.fileUrl = `/uploads/${req.file.filename}`;
     }
 
     const policy = new Policy(policyData);
@@ -86,11 +83,10 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
 
     res.status(201).json(policy);
   } catch (error) {
-    console.error("❌ Create policy error:", error);
+    console.error("Create policy error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
-
 
 // Get all policies for logged-in user
 router.get("/", authMiddleware, async (req, res) => {

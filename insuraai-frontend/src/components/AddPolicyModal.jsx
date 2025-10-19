@@ -65,61 +65,45 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
 
   // Add policy with file upload support
   const handleAddPolicy = async () => {
-  if (!formData.policyNumber) {
-    alert("Please enter or extract policy details before saving.");
-    return;
-  }
-
-  console.log("📤 Sending policy data (multipart):", formData);
-
-  setLoading(true);
-  try {
-    // Build FormData object
-    const formDataToSend = new FormData();
-
-    // Add text fields
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== undefined && value !== "") {
-        formDataToSend.append(key, value);
-      }
+    const formDataObj = new FormData();
+    Object.keys(formData).forEach((key) => {
+      formDataObj.append(key, formData[key]);
     });
+    if (file) formDataObj.append("file", file);
 
-    // Add file if present
-    if (file) {
-      formDataToSend.append("file", file);
-    }
+    console.log("📤 Sending policy data (multipart):", Object.fromEntries(formDataObj));
 
-    // Send POST request
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`, // ✅ no manual Content-Type
-      },
-      body: formDataToSend,
-    });
+    setLoading(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formDataObj,
+      });
 
-    const result = await res.json();
-    console.log("📥 Backend response:", result);
+      const result = await res.json();
+      console.log("📥 Backend response:", result);
 
-    if (res.ok) {
-      if (result.duplicate) {
-        console.log("ℹ️ Duplicate detected, ignoring.");
-        onClose();
+      if (res.ok) {
+        if (result.duplicate) {
+          console.log("ℹ️ Duplicate detected, ignoring.");
+          onClose(); // just close modal, don’t re-add
+        } else {
+          onSave(result); // ✅ normal add
+          onClose();
+        }
       } else {
-        onSave(result);
-        onClose();
+        alert("❌ Failed: " + (result.error || "Unknown error"));
       }
-    } else {
-      alert("❌ Failed: " + (result.error || "Unknown error"));
+    } catch (err) {
+      console.error("❌ Network error:", err);
+      alert("❌ Network error");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("❌ Network error:", err);
-    alert("❌ Network error");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

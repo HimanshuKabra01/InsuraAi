@@ -496,3 +496,95 @@ function StepCard({ step, title, desc }) {
   );
 }
 
+import express from "express";
+import authMiddleware from "../middleware/authMiddleware.js";
+import Policy from "../models/policy.js";
+import { sendEmail } from "../config/email.js";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config()
+const router = express.Router();
+
+
+// Create new policy
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ✅ Configure multer to use Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "insuraai_uploads",
+      allowed_formats: ["jpg", "png", "pdf"],
+      resource_type: "auto",
+      public_id: `${Date.now()}-${path.parse(file.originalname).name}`,
+    };
+  },
+});
+
+const upload = multer({ storage });
+
+
+
+// 🟢 Create new policy (with optional document upload)
+router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
+  try {
+    const {
+      policyNumber,
+      type,
+      premiumAmount,
+      sumInsured,
+      deductible,
+      startDate,
+      endDate,
+    } = req.body;
+
+    // Prevent duplicates for the same user
+    const policyExists = await Policy.findOne({
+      policyNumber,
+      createdBy: req.user.id,
+    });
+    if (policyExists) {
+      return res.status(400).json({ error: "Policy number already exists" });
+    }
+
+    // Auto-set renewal date 15 days before end date
+    const renewalDueDate = new Date(endDate);
+    renewalDueDate.setDate(renewalDueDate.getDate() - 15);
+
+    // Build new policy object
+    const policyData = {
+      policyNumber,
+      type,
+      premiumAmount,
+      sumInsured,
+      deductible,
+      startDate,
+      endDate,
+      renewalDueDate,
+      createdBy: req.user.id,
+    };
+    console.log("Received body:", req.body);
+    console.log("Received file:", req.file);
+
+    // ✅ If file uploaded, attach Cloudinary URL instead of local path
+    if (req.file && req.file.path) {
+      policyData.fileUrl = req.file.path; // Cloudinary auto-returns hosted URL
+    }
+
+    const policy = new Policy(policyData);
+    await policy.save();
+
+    res.status(201).json(policy);
+  } catch (error) {
+    console.error("❌ Create policy error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
