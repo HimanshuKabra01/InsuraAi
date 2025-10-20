@@ -347,13 +347,14 @@ export default function Dashboard() {
                       {/* View Document Button */}
                       {policy.fileUrl && (
                         <a
-    href={policy.fileUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition"
-  >
-    📄 View Document
-  </a>
+  href={policy.fileUrl}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition"
+>
+  📄 View Document
+</a>
+
 
                       )}
                       <button
