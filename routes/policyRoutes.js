@@ -35,6 +35,7 @@ const upload = multer({
 });
 
 // 🟢 Create new policy (with optional document upload)
+// 🟢 Create new policy
 router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const {
@@ -47,7 +48,6 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       endDate,
     } = req.body;
 
-    // Prevent duplicates for the same user
     const policyExists = await Policy.findOne({
       policyNumber,
       createdBy: req.user.id,
@@ -56,26 +56,30 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Policy number already exists" });
     }
 
-    // Auto-set renewal date 15 days before end date
     const renewalDueDate = new Date(endDate);
     renewalDueDate.setDate(renewalDueDate.getDate() - 15);
 
-    // Build new policy object
+    // 🧹 Clean numeric fields
+    const cleanNumber = (value) => {
+      if (!value) return undefined;
+      const numeric = String(value).replace(/[^0-9.]/g, "").trim();
+      return numeric ? Number(numeric) : undefined;
+    };
+
     const policyData = {
       policyNumber,
       type,
-      premiumAmount,
-      sumInsured,
-      deductible,
+      premiumAmount: cleanNumber(premiumAmount),
+      sumInsured: cleanNumber(sumInsured),
+      deductible: cleanNumber(deductible),
       startDate,
       endDate,
       renewalDueDate,
       createdBy: req.user.id,
     };
 
-    // If file uploaded, attach file URL
-    if (req.file) {
-      policyData.fileUrl = `/uploads/${req.file.filename}`;
+    if (req.file && req.file.path) {
+      policyData.fileUrl = req.file.path;
     }
 
     const policy = new Policy(policyData);
@@ -83,10 +87,11 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
 
     res.status(201).json(policy);
   } catch (error) {
-    console.error("Create policy error:", error.message);
+    console.error("❌ Create policy error:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Get all policies for logged-in user
 router.get("/", authMiddleware, async (req, res) => {
