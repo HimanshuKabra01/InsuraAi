@@ -19,19 +19,25 @@ cloudinary.config({
 });
 
 // ✅ Configure multer to use Cloudinary
+// ✅ Cloudinary configuration
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
+    const ext = file.originalname.split(".").pop().toLowerCase();
+
+    // ✅ If file is PDF → upload as raw; otherwise image
+    const isPDF = ext === "pdf";
     return {
       folder: "insuraai_uploads",
+      resource_type: isPDF ? "raw" : "image", // 🔥 Force PDFs as raw
       allowed_formats: ["jpg", "png", "pdf"],
-      resource_type: "auto",
-      public_id: `${Date.now()}-${path.parse(file.originalname).name}`,
+      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
     };
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage });
+
 
 
 
