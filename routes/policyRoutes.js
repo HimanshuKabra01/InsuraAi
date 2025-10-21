@@ -24,17 +24,17 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
     const ext = file.originalname.split(".").pop().toLowerCase();
-
-    // ✅ If file is PDF → upload as raw; otherwise image
     const isPDF = ext === "pdf";
+
     return {
       folder: "insuraai_uploads",
-      resource_type: isPDF ? "raw" : "image", // 🔥 Force PDFs as raw
+      resource_type: isPDF ? "raw" : "image",
       allowed_formats: ["jpg", "png", "pdf"],
-      public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
+      public_id: `${Date.now()}-${path.parse(file.originalname).base}`, // ✅ keep .pdf
     };
   },
 });
+
 
 const upload = multer({ storage });
 
