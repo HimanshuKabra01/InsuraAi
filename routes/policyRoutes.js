@@ -67,19 +67,31 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
     const renewalDueDate = new Date(endDate);
     renewalDueDate.setDate(renewalDueDate.getDate() - 15);
 
+    // ✅ Clean numeric fields (remove commas, % symbols, and extra spaces)
+    const cleanNumber = (value) => {
+      if (!value) return 0;
+      return Number(
+        String(value)
+          .replace(/[,₹$%]/g, "") // remove commas, currency, percentage
+          .trim()
+      );
+    };
+
     // Build new policy object
     const policyData = {
       policyNumber,
       type,
-      premiumAmount,
-      sumInsured,
-      deductible,
+      premiumAmount: cleanNumber(premiumAmount),
+      sumInsured: cleanNumber(sumInsured),
+      deductible: cleanNumber(deductible),
       startDate,
       endDate,
       renewalDueDate,
       createdBy: req.user.id,
     };
+
     console.log("Received body:", req.body);
+    console.log("Sanitized policy data:", policyData);
     console.log("Received file:", req.file);
 
     // ✅ If file uploaded, attach Cloudinary URL instead of local path
@@ -93,9 +105,10 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
     res.status(201).json(policy);
   } catch (error) {
     console.error("❌ Create policy error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
+    res.status(500).json({ error: "Server error" });
+  }
 });
+
 
 
 // Get all policies for logged-in user
