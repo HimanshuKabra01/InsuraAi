@@ -1,25 +1,21 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { X, CloudUpload, Scan, Edit3, Calendar, DollarSign, Shield, CheckCircle2, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { CloudUpload } from "lucide-react";
 
 export default function AddPolicyModal({ onClose, onSave, token }) {
   const [activeTab, setActiveTab] = useState("scan");
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isExtracted, setIsExtracted] = useState(false);
-
   const [formData, setFormData] = useState({
     policyNumber: "",
-    type: "Health",
+    type: "",
     premiumAmount: "",
     sumInsured: "",
     deductible: "",
     startDate: "",
     endDate: "",
   });
-
-  // --- File Handler ---
+  // File select
   const handleFileChange = (e) => {
     const selected = e.target.files[0];
     if (
@@ -28,301 +24,276 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
       selected.size <= 10 * 1024 * 1024
     ) {
       setFile(selected);
-      setIsExtracted(false);
     } else {
-      toast.error("Invalid file. Please upload JPG, PNG, or PDF under 10MB.");
+      alert("❌ Invalid file. Please upload JPG, PNG, or PDF under 10MB.");
     }
   };
 
-  // --- Input Handler ---
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  // --- AI Extraction Logic ---
+  // Run AI extraction
   const handleExtract = async () => {
-    if (!file) return toast.error("Please choose a file first.");
+    if (!file) return alert("Please choose a file first.");
     setLoading(true);
-    
     try {
       const formDataObj = new FormData();
       formDataObj.append("file", file);
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/extractRoutes/extract`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` }, 
-        // NOTE: Do NOT set Content-Type here either
+        headers: { Authorization: `Bearer ${token}` },
         body: formDataObj,
       });
 
       const data = await res.json();
-
       if (res.ok) {
         setFormData({
           policyNumber: data.policyNumber || "",
-          type: data.type || "Health",
+          type: data.type || "",
           premiumAmount: data.premiumAmount || "",
           sumInsured: data.sumInsured || "",
           deductible: data.deductible || "",
-          startDate: data.startDate ? new Date(data.startDate).toISOString().split('T')[0] : "",
-          endDate: data.endDate ? new Date(data.endDate).toISOString().split('T')[0] : "",
+          startDate: data.startDate || "",
+          endDate: data.endDate || "",
         });
-        setIsExtracted(true);
-        toast.success("Data extracted successfully!");
       } else {
-        toast.error("Extraction failed: " + (data.error || "Unknown error"));
+        alert("❌ Extraction failed: " + (data.error || "Unknown error"));
       }
     } catch (err) {
-      console.error(err);
-      toast.error("Error connecting to extraction service.");
-    } finally {
-      setLoading(false);
+      alert("❌ Error connecting to backend.");
     }
+    setLoading(false);
   };
 
-  // --- SAVE POLICY LOGIC (The Fix is Here) ---
-  const handleAddPolicy = async (e) => {
-    if (e) e.preventDefault();
+  // Add policy with file upload support
+  const handleAddPolicy = async () => {
+    const formDataObj = new FormData();
+    Object.keys(formData).forEach((key) => {
+      formDataObj.append(key, formData[key]);
+    });
+    if (file) formDataObj.append("file", file);
+
+    console.log("📤 Sending policy data (multipart):", Object.fromEntries(formDataObj));
+
     setLoading(true);
-
     try {
-      const formDataObj = new FormData();
-      
-      // Append all text fields
-      Object.keys(formData).forEach((key) => {
-        // Ensure we don't send "undefined" or "null" strings
-        const value = formData[key] || ""; 
-        formDataObj.append(key, value);
-      });
-
-      // Append file if it exists (Only for scan tab, or if user uploaded one in manual)
-      if (file && activeTab === 'scan') {
-        formDataObj.append("file", file);
-      }
-
-      console.log("Sending Data..."); // Debug log
-
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
         method: "POST",
-        headers: { 
-            Authorization: `Bearer ${token}` 
-            // ❌ CRITICAL: Do NOT add 'Content-Type': 'multipart/form-data'
-            // The browser adds this automatically with the correct boundary
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
         body: formDataObj,
       });
 
       const result = await res.json();
+      console.log("📥 Backend response:", result);
 
       if (res.ok) {
-        // Success!
-        onSave(result); 
-        onClose();
+        if (result.duplicate) {
+          console.log("ℹ️ Duplicate detected, ignoring.");
+          onClose(); // just close modal, don’t re-add
+        } else {
+          onSave(result); // ✅ normal add
+          onClose();
+        }
       } else {
-        console.error("Server Error:", result);
-        toast.error("Failed: " + (result.error || result.message || "Server rejected data"));
+        alert("❌ Failed: " + (result.error || "Unknown error"));
       }
     } catch (err) {
-      console.error("Network Error:", err);
-      toast.error("Network error while saving policy.");
+      console.error("❌ Network error:", err);
+      alert("❌ Network error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">Add New Policy</h3>
-            <p className="text-xs text-gray-500">Select a method to add your insurance details</p>
+        <div className="p-6 border-b">
+          <h2 className="text-2xl font-bold text-indigo-600 mb-1">Add New Policy</h2>
+          <p className="text-gray-500 text-sm">
+            Upload a policy document to automatically extract details, or enter them manually.
+          </p>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Tabs */}
+          <div className="flex border-b mb-4">
+            <button
+              className={`flex-1 py-2 ${
+                activeTab === "scan"
+                  ? "border-b-2 border-indigo-600 text-indigo-600 font-semibold"
+                  : "text-gray-500"
+              }`}
+              onClick={() => setActiveTab("scan")}
+            >
+              Scan Document
+            </button>
+            <button
+              className={`flex-1 py-2 ${
+                activeTab === "manual"
+                  ? "border-b-2 border-indigo-600 text-indigo-600 font-semibold"
+                  : "text-gray-500"
+              }`}
+              onClick={() => setActiveTab("manual")}
+            >
+              Manual Entry
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition">
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Tabs */}
-        <div className="flex p-2 bg-white border-b border-gray-100">
-          <button
-            onClick={() => setActiveTab("scan")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
-              activeTab === "scan"
-                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <Scan size={18} /> AI Scan
-          </button>
-          <button
-            onClick={() => setActiveTab("manual")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${
-              activeTab === "manual"
-                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <Edit3 size={18} /> Manual Entry
-          </button>
-        </div>
-
-        {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          
-          {/* --- SCAN TAB --- */}
+          {/* Scan Tab */}
           {activeTab === "scan" && (
-            <div className="space-y-6">
-              {/* Upload Box */}
-              <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                file ? "border-indigo-300 bg-indigo-50/30" : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
-              }`}>
-                <input
-                  type="file"
-                  id="file-upload"
-                  accept=".jpg,.png,.pdf"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                   <div className={`p-3 rounded-full mb-3 ${file ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
-                      <CloudUpload size={32} />
-                   </div>
-                   {file ? (
-                     <div>
-                       <p className="text-sm font-semibold text-gray-900">{file.name}</p>
-                       <p className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                       <p className="text-xs text-indigo-600 mt-2 font-medium">Click to change</p>
-                     </div>
-                   ) : (
-                     <div>
-                       <p className="text-sm font-medium text-gray-700">Click to upload document</p>
-                       <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG (Max 10MB)</p>
-                     </div>
-                   )}
+            <div className="text-center">
+              {/* File Upload */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4">
+                <CloudUpload className="mx-auto text-gray-400 w-12 h-12 mb-2" />
+                <p className="text-gray-600">Drag & drop file here, or</p>
+                <label className="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700">
+                  Choose File
+                  <input
+                    type="file"
+                    accept=".jpg,.png,.pdf"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </label>
+                {file && <p className="mt-2 text-sm text-gray-600">📄 {file.name}</p>}
               </div>
 
-              {/* Actions */}
-              {!isExtracted ? (
-                 <button
-                   onClick={handleExtract}
-                   disabled={!file || loading}
-                   className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                 >
-                   {loading ? <Loader2 className="animate-spin" /> : <Scan size={18} />}
-                   {loading ? "Extracting Data..." : "Extract Details with AI"}
-                 </button>
+              {/* Info */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4 text-sm text-indigo-700">
+                <p>
+                  Our AI will automatically extract <b>policy number</b>, <b>type</b>, <b>premium amount</b>, <b>sum insured</b>, <b>deductible</b>, and dates.
+                  You can review details below.
+                </p>
+              </div>
+
+              {/* Extraction or Preview */}
+              {!formData.policyNumber && !formData.type && !formData.startDate ? (
+                <button
+                  disabled={!file || loading}
+                  onClick={handleExtract}
+                  className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                >
+                  {loading ? "⏳ Extracting..." : "Run AI Extraction"}
+                </button>
               ) : (
-                 // Extracted Preview
-                 <div className="space-y-4">
-                    <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
-                       <div className="flex items-center gap-2 text-green-700 font-semibold mb-3">
-                          <CheckCircle2 size={18} /> Extraction Complete
-                       </div>
-                       <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">
-                          <p><span className="font-medium">Number:</span> {formData.policyNumber}</p>
-                          <p><span className="font-medium">Type:</span> {formData.type}</p>
-                          <p><span className="font-medium">Premium:</span> ₹{formData.premiumAmount}</p>
-                          <p><span className="font-medium">Expiry:</span> {formData.endDate}</p>
-                       </div>
-                    </div>
-                    <button
-                      onClick={handleAddPolicy}
-                      disabled={loading}
-                      className="w-full py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {loading ? <Loader2 className="animate-spin" /> : <CheckCircle2 size={18} />}
-                      Confirm & Save Policy
-                    </button>
-                 </div>
+                <>
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-left">
+                    <h4 className="font-semibold text-green-700 mb-2">Extracted Details:</h4>
+                    <p><b>Policy Number:</b> {formData.policyNumber || "-"}</p>
+                    <p><b>Type:</b> {formData.type || "-"}</p>
+                    <p><b>Premium:</b> ₹{formData.premiumAmount || "-"}</p>
+                    <p><b>Sum Insured:</b> ₹{formData.sumInsured || "-"}</p>
+                    <p><b>Deductible:</b> ₹{formData.deductible || "-"}</p>
+                    <p><b>Start Date:</b> {formData.startDate || "-"}</p>
+                    <p><b>End Date:</b> {formData.endDate || "-"}</p>
+                  </div>
+
+                  <button
+                    onClick={handleAddPolicy}
+                    disabled={loading}
+                    className={`w-full mt-4 px-6 py-3 rounded-lg text-white ${
+                      loading
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700"
+                    }`}
+                  >
+                    {loading ? "⏳ Saving..." : "➕ Add Policy"}
+                  </button>
+                </>
               )}
             </div>
           )}
 
-          {/* --- MANUAL TAB --- */}
+          {/* Manual Tab */}
           {activeTab === "manual" && (
-             <form onSubmit={handleAddPolicy} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                   <InputGroup label="Policy Number" icon={<Shield size={14} />}>
-                      <input name="policyNumber" required className="input-field" placeholder="POL-12345" onChange={handleChange} value={formData.policyNumber} />
-                   </InputGroup>
-                   <InputGroup label="Policy Type">
-                      <select name="type" className="input-field bg-white" onChange={handleChange} value={formData.type}>
-                         <option value="Health">Health</option>
-                         <option value="Vehicle">Vehicle</option>
-                         <option value="Life">Life</option>
-                         <option value="Home">Home</option>
-                         <option value="Travel">Travel</option>
-                      </select>
-                   </InputGroup>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                   <InputGroup label="Premium (₹)" icon={<DollarSign size={14} />}>
-                      <input name="premiumAmount" type="number" required className="input-field" placeholder="0.00" onChange={handleChange} value={formData.premiumAmount} />
-                   </InputGroup>
-                   <InputGroup label="Sum Insured (₹)">
-                      <input name="sumInsured" type="number" required className="input-field" placeholder="0.00" onChange={handleChange} value={formData.sumInsured} />
-                   </InputGroup>
-                </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddPolicy();
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="text"
+                placeholder="Policy Number"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.policyNumber}
+                onChange={(e) => setFormData({ ...formData, policyNumber: e.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Type"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                required
+              />
+              <input
+                type="number"
+                placeholder="Premium Amount"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.premiumAmount}
+                onChange={(e) => setFormData({ ...formData, premiumAmount: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Sum Insured"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.sumInsured}
+                onChange={(e) => setFormData({ ...formData, sumInsured: e.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Deductible"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.deductible}
+                onChange={(e) => setFormData({ ...formData, deductible: e.target.value })}
+              />
+              <input
+                type="date"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+              <input
+                type="date"
+                className="w-full px-4 py-2 border rounded-lg"
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              />
 
-                <div className="grid grid-cols-2 gap-4">
-                   <InputGroup label="Start Date" icon={<Calendar size={14} />}>
-                      <input name="startDate" type="date" required className="input-field text-gray-500" onChange={handleChange} value={formData.startDate} />
-                   </InputGroup>
-                   <InputGroup label="End Date" icon={<Calendar size={14} />}>
-                      <input name="endDate" type="date" required className="input-field text-gray-500" onChange={handleChange} value={formData.endDate} />
-                   </InputGroup>
-                </div>
-
-                <div className="pt-4">
-                   <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                   >
-                      {loading ? <Loader2 className="animate-spin" /> : "Save Policy"}
-                   </button>
-                </div>
-             </form>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 border rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`px-6 py-2 rounded-lg text-white ${
+                    loading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-indigo-600 hover:bg-indigo-700"
+                  }`}
+                >
+                  {loading ? "⏳ Saving..." : "Save Policy"}
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </motion.div>
-
-      <style>{`
-        .input-field {
-           width: 100%;
-           padding: 0.6rem 0.75rem;
-           border: 1px solid #e5e7eb;
-           border-radius: 0.5rem;
-           font-size: 0.875rem;
-           outline: none;
-           transition: border-color 0.2s;
-        }
-        .input-field:focus {
-           border-color: #6366f1;
-           box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
-        }
-      `}</style>
     </div>
   );
-}
-
-// Helper Component
-function InputGroup({ label, icon, children }) {
-   return (
-      <div className="space-y-1.5">
-         <label className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
-            {icon} {label}
-         </label>
-         {children}
-      </div>
-   )
 }
