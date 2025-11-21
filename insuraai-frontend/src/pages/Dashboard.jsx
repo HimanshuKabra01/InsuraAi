@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import AddPolicyModal from "../components/AddPolicyModal";
-const API = process.env.REACT_APP_API_URL;
+const API = import.meta.env.VITE_API_URL;
 export default function Dashboard() {
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -151,44 +151,44 @@ export default function Dashboard() {
   ).length;
 
   return (
-    <div className="relative min-h-screen flex bg-gradient-to-br from-[#0A2647] via-[#144272] to-[#205295] overflow-hidden text-slate-50">
+    <div className="relative min-h-screen flex bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
       {/* Floating background shapes */}
       <motion.div
         animate={{ opacity: [0.2, 0.3, 0.2], scale: [1, 1.05, 1] }}
         transition={{ duration: 6, repeat: Infinity }}
-        className="absolute top-[-100px] left-[-120px] w-[400px] h-[400px] bg-[#144272] rounded-full blur-3xl opacity-30"
+        className="absolute top-[-100px] left-[-120px] w-[400px] h-[400px] bg-indigo-300 rounded-full blur-3xl opacity-30"
       />
       <motion.div
         animate={{ opacity: [0.2, 0.3, 0.2], scale: [1.05, 1, 1.05] }}
         transition={{ duration: 8, repeat: Infinity }}
-        className="absolute bottom-[-150px] right-[-120px] w-[500px] h-[500px] bg-[#205295] rounded-full blur-3xl opacity-30"
+        className="absolute bottom-[-150px] right-[-120px] w-[500px] h-[500px] bg-purple-300 rounded-full blur-3xl opacity-30"
       />
 
       <Toaster position="top-right" />
 
       {/* Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white/5 backdrop-blur-lg border-r border-white/10 flex-col shadow-lg">
+      <aside className="hidden md:flex w-64 bg-white/70 backdrop-blur-lg border-r flex-col shadow-lg">
         <div className="p-6">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="text-[#78c6ff]" />
-            <h1 className="text-xl font-bold text-[#dbefff]">InsuraAI</h1>
+            <ShieldCheck className="text-indigo-600" />
+            <h1 className="text-xl font-bold text-indigo-600">InsuraAI</h1>
           </div>
         </div>
         <nav className="flex-1 p-4 text-sm">
-          <div className="mb-2 px-3 py-2 rounded-lg bg-white/6 text-[#cdeaff] font-medium">
+          <div className="mb-2 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-medium">
             Dashboard
           </div>
-          <div className="px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer">
+          <div className="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
             Analytics
           </div>
-          <div className="px-3 py-2 rounded-lg hover:bg-white/5 cursor-pointer">
+          <div className="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
             Settings
           </div>
         </nav>
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t">
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-400 border border-red-500/40 rounded-lg hover:bg-red-500/10 transition"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-600 border border-red-500 rounded-lg hover:bg-red-50 transition"
           >
             <LogOut className="w-4 h-4" /> Logout
           </button>
@@ -197,33 +197,33 @@ export default function Dashboard() {
 
       {/* Main */}
       <main className="flex-1 relative z-10">
-        <header className="sticky top-0 bg-white/3 backdrop-blur border-b border-white/10 z-10">
+        <header className="sticky top-0 bg-white/70 backdrop-blur border-b z-10">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-[#e6f7ff]">
+            <h2 className="text-2xl font-bold tracking-tight text-indigo-700">
               My Policies
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-200" />
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="pl-9 pr-3 py-2 rounded-lg border w-72 focus:outline-none focus:ring-2 focus:ring-[#78c6ff] bg-white/5 text-slate-100 placeholder-slate-300"
+                  className="pl-9 pr-3 py-2 rounded-lg border w-72 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Search by policy # or type"
                 />
               </div>
 
-              <div className="flex rounded-lg border border-white/10 overflow-hidden">
+              <div className="flex rounded-lg border overflow-hidden">
                 {["all", "active", "expired", "pending"].map((s) => (
                   <button
                     key={s}
                     onClick={() => setStatusFilter(s)}
                     className={`px-3 py-2 text-sm capitalize ${
                       statusFilter === s
-                        ? "bg-[#144272] text-white"
-                        : "bg-transparent hover:bg-white/5"
-                    } ${s !== "pending" ? "border-r border-white/5" : ""}`}
+                        ? "bg-indigo-600 text-white"
+                        : "bg-white hover:bg-gray-50"
+                    } ${s !== "pending" ? "border-r" : ""}`}
                   >
                     {s}
                   </button>
@@ -231,11 +231,11 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-slate-200" />
+                <Filter className="w-4 h-4 text-gray-500" />
                 <select
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value)}
-                  className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#78c6ff] bg-white/5 text-slate-100"
+                  className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="endDateAsc">End date ↑</option>
                   <option value="endDateDesc">End date ↓</option>
@@ -246,7 +246,7 @@ export default function Dashboard() {
 
               <button
                 onClick={() => setShowForm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#144272] text-white rounded-lg shadow hover:bg-[#0f3c63] transition"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
               >
                 <PlusCircle className="w-5 h-5" /> Add Policy
               </button>
@@ -261,13 +261,13 @@ export default function Dashboard() {
               title="Total Policies"
               value={policies.length}
               icon={<ShieldCheck className="w-5 h-5" />}
-              gradient="from-[#78c6ff] to-[#4fc3ff]"
+              gradient="from-indigo-500 to-purple-500"
             />
             <StatCard
               title="Active"
               value={activeCount}
               icon={<CalendarClock className="w-5 h-5" />}
-              gradient="from-emerald-400 to-teal-500"
+              gradient="from-emerald-500 to-teal-500"
             />
             <StatCard
               title="Due Soon (≤15d)"
@@ -290,19 +290,19 @@ export default function Dashboard() {
                   <motion.div
                     key={policy._id}
                     whileHover={{ y: -4 }}
-                    className="rounded-2xl border shadow-md bg-white/6 backdrop-blur-lg p-5 transition"
+                    className="rounded-2xl border shadow-md bg-white/80 backdrop-blur-lg p-5 transition"
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-[#e6f7ff]">
+                        <h3 className="text-lg font-semibold text-indigo-700">
                           {policy.policyNumber}
                         </h3>
-                        <p className="text-sm text-slate-200">{policy.type}</p>
+                        <p className="text-sm text-gray-500">{policy.type}</p>
                       </div>
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${
                           policy.status === "active"
-                            ? "bg-emerald-100 text-emerald-800"
+                            ? "bg-emerald-100 text-emerald-700"
                             : policy.status === "expired"
                             ? "bg-rose-100 text-rose-700"
                             : "bg-amber-100 text-amber-700"
@@ -347,23 +347,25 @@ export default function Dashboard() {
                       {/* View Document Button */}
                       {policy.fileUrl && (
                         <a
-                          href={policy.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-white/20 text-[#dbefff] hover:bg-white/6 transition"
-                        >
-                          📄 View Document
-                        </a>
+  href={policy.fileUrl}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition"
+>
+  📄 View Document
+</a>
+
+
                       )}
                       <button
                         onClick={() => renewPolicy(policy._id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-white/10 text-slate-200 hover:bg-white/6 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
                       >
                         <RefreshCw className="w-4 h-4" /> Renew
                       </button>
                       <button
                         onClick={() => deletePolicy(policy._id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-white/10 text-slate-200 hover:bg-white/6 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
                       >
                         <Trash2 className="w-4 h-4" /> Delete
                       </button>
@@ -375,14 +377,15 @@ export default function Dashboard() {
           )}
         </div>
         {/* 👇 Mobile Logout Button (shown only on small screens) */}
-        <div className="md:hidden mt-10 flex justify-center pb-10">
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-red-400 border border-red-400 rounded-lg hover:bg-red-500/10 transition"
-          >
-            <LogOut className="w-4 h-4" /> Logout
-          </button>
-        </div>
+<div className="md:hidden mt-10 flex justify-center pb-10">
+  <button
+    onClick={logout}
+    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-red-600 border border-red-500 rounded-lg hover:bg-red-50 transition"
+  >
+    <LogOut className="w-4 h-4" /> Logout
+  </button>
+</div>
+
       </main>
 
       {showForm && (
@@ -402,15 +405,15 @@ function StatCard({ title, value, icon, gradient }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="relative overflow-hidden rounded-2xl border bg-white/6 shadow-md"
+      className="relative overflow-hidden rounded-2xl border bg-white shadow-md"
     >
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10`} />
       <div className="relative p-5">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-200">{title}</p>
-          <div className="p-2 rounded-lg bg-white/8 shadow">{icon}</div>
+          <p className="text-sm text-gray-500">{title}</p>
+          <div className="p-2 rounded-lg bg-white shadow">{icon}</div>
         </div>
-        <p className="mt-2 text-3xl font-bold text-[#e6f7ff]">{value}</p>
+        <p className="mt-2 text-3xl font-bold text-indigo-700">{value}</p>
       </div>
     </motion.div>
   );
@@ -419,8 +422,8 @@ function StatCard({ title, value, icon, gradient }) {
 function InfoRow({ label, value }) {
   return (
     <div className="flex flex-col">
-      <span className="text-xs text-slate-300">{label}</span>
-      <span className="font-medium text-slate-100">{value}</span>
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="font-medium">{value}</span>
     </div>
   );
 }
@@ -429,15 +432,15 @@ function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-2xl border bg-white/6 p-5 animate-pulse">
-          <div className="h-4 w-40 bg-white/8 rounded" />
-          <div className="mt-2 h-3 w-24 bg-white/8 rounded" />
+        <div key={i} className="rounded-2xl border bg-white p-5 animate-pulse">
+          <div className="h-4 w-40 bg-gray-200 rounded" />
+          <div className="mt-2 h-3 w-24 bg-gray-200 rounded" />
           <div className="mt-5 grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((__, j) => (
-              <div key={j} className="h-3 bg-white/8 rounded" />
+              <div key={j} className="h-3 bg-gray-200 rounded" />
             ))}
           </div>
-          <div className="mt-5 h-9 bg-white/8 rounded" />
+          <div className="mt-5 h-9 bg-gray-200 rounded" />
         </div>
       ))}
     </div>
@@ -446,17 +449,17 @@ function SkeletonGrid() {
 
 function EmptyState({ onAdd }) {
   return (
-    <div className="border rounded-2xl p-10 bg-white/6 backdrop-blur-lg text-center shadow-md">
-      <div className="mx-auto w-14 h-14 rounded-full bg-white/8 flex items-center justify-center mb-3">
-        <ShieldCheck className="text-[#78c6ff]" />
+    <div className="border rounded-2xl p-10 bg-white/80 backdrop-blur-lg text-center shadow-md">
+      <div className="mx-auto w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
+        <ShieldCheck className="text-indigo-600" />
       </div>
-      <h3 className="text-lg font-semibold text-[#e6f7ff]">No policies yet</h3>
-      <p className="text-slate-300 mt-1">
+      <h3 className="text-lg font-semibold text-indigo-700">No policies yet</h3>
+      <p className="text-gray-500 mt-1">
         Get started by adding your first policy via manual entry or AI scan.
       </p>
       <button
         onClick={onAdd}
-        className="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-[#144272] text-white rounded-lg hover:bg-[#0f3c63] transition"
+        className="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
       >
         <PlusCircle className="w-4 h-4" /> Add Policy
       </button>
