@@ -1,193 +1,148 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ShieldCheck,
-  Plus,
+  PlusCircle,
   Trash2,
   RefreshCw,
   LogOut,
   Search,
   Filter,
-  AlertCircle,
-  FileText,
-  LayoutDashboard,
-  PieChart,
-  Settings,
-  Loader2
+  CalendarClock,
+  AlertTriangle,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import AddPolicyModal from "../components/AddPolicyModal";
-
+const API = import.meta.env.VITE_API_URL;
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [policies, setPolicies] = useState([]);
-  const [user, setUser] = useState({ 
-    name: "Loading...", 
-    email: "...", 
-    avatar: null 
-  });
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  // Filter States
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey] = useState("endDateAsc");
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const token = localStorage.getItem("token");
 
-  // --- 1. Data Fetching Logic (Reusable) ---
-  const fetchAllData = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
+  // Fetch policies
+  const fetchPolicies = async () => {
+    setLoading(true);
     try {
-      // Parallel fetching for speed
-      const [userRes, policiesRes] = await Promise.all([
-        fetch(`${API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_URL}/api/policies`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      // Handle Unauthorized (401)
-      if (userRes.status === 401 || policiesRes.status === 401) {
-        localStorage.removeItem("token");
-        toast.error("Session expired. Please login again.");
-        navigate("/login");
-        return;
-      }
-
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        setUser(userData);
-      }
-
-      if (policiesRes.ok) {
-        const policiesData = await policiesRes.json();
-        setPolicies(Array.isArray(policiesData) ? policiesData : []);
-      }
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setPolicies(data);
+      else toast.error(data.error || "Failed to load policies");
     } catch (err) {
-      console.error("Dashboard load error:", err);
-      toast.error("Failed to sync data");
+      toast.error("Network error while fetching policies");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- 2. Initial Load Effect ---
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-    setLoading(true);
-    fetchAllData();
-  }, [navigate, API_URL]);
+    fetchPolicies();
+  }, []);
 
-  // --- Helpers & Calculations ---
+  // Helpers
   const daysLeft = (endDate) => {
-    if (!endDate) return 0;
     const now = new Date();
     const end = new Date(endDate);
-    return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-  };
-
-  const getAvatarUrl = (name) => {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&background=4f46e5&color=fff&bold=true`;
+    const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   const filteredSorted = useMemo(() => {
-    if (!Array.isArray(policies)) return [];
-
     let list = [...policies];
 
-    // Search
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
         (p) =>
-          (p.policyNumber && p.policyNumber.toLowerCase().includes(q)) ||
-          (p.type && p.type.toLowerCase().includes(q))
+          p.policyNumber?.toLowerCase().includes(q) ||
+          p.type?.toLowerCase().includes(q)
       );
     }
 
-    // Filter
     if (statusFilter !== "all") list = list.filter((p) => p.status === statusFilter);
 
-    // Sort
     const byEnd = (a, b) => new Date(a.endDate) - new Date(b.endDate);
     const byEndDesc = (a, b) => new Date(b.endDate) - new Date(a.endDate);
     const byPremiumHigh = (a, b) => (b.premiumAmount || 0) - (a.premiumAmount || 0);
     const byPremiumLow = (a, b) => (a.premiumAmount || 0) - (b.premiumAmount || 0);
 
     switch (sortKey) {
-      case "endDateAsc": list.sort(byEnd); break;
-      case "endDateDesc": list.sort(byEndDesc); break;
-      case "premiumHigh": list.sort(byPremiumHigh); break;
-      case "premiumLow": list.sort(byPremiumLow); break;
-      default: break;
+      case "endDateAsc":
+        list.sort(byEnd);
+        break;
+      case "endDateDesc":
+        list.sort(byEndDesc);
+        break;
+      case "premiumHigh":
+        list.sort(byPremiumHigh);
+        break;
+      case "premiumLow":
+        list.sort(byPremiumLow);
+        break;
+      default:
+        break;
     }
 
     return list;
   }, [policies, query, statusFilter, sortKey]);
 
-  // --- Actions ---
+  // Actions
   const deletePolicy = async (id) => {
-    const token = localStorage.getItem("token");
-    if (!window.confirm("Are you sure you want to remove this policy?")) return;
+    const ok = window.confirm("Delete this policy permanently?");
+    if (!ok) return;
     try {
-      const res = await fetch(`${API_URL}/api/policies/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         setPolicies((prev) => prev.filter((p) => p._id !== id));
-        toast.success("Policy removed");
+        toast.success("Policy deleted");
       } else {
         const data = await res.json();
-        toast.error(data.error || "Delete failed");
+        toast.error(data.error || "Failed to delete policy");
       }
     } catch {
-      toast.error("Network error");
+      toast.error("Network error while deleting");
     }
   };
 
   const renewPolicy = async (id) => {
-    const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`${API_URL}/api/policies/${id}/renew`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies/${id}/renew`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success("Renewed successfully!");
-        // Optimistic update or re-fetch
+        toast.success("Policy renewed");
         setPolicies((prev) =>
           prev.map((p) => (p._id === id ? data.policy : p))
         );
       } else {
-        toast.error(data.error || "Renewal failed");
+        toast.error(data.error || "Failed to renew");
       }
     } catch {
-      toast.error("Network error");
+      toast.error("Network error while renewing");
     }
   };
 
   const logout = () => {
     localStorage.removeItem("token");
-    navigate("/login");
+    window.location.href = "/login";
   };
 
-  // IMPORTANT: Re-fetch data after adding to ensure sync
-  const handlePolicyAdded = async () => {
-    await fetchAllData();
-    toast.success("Dashboard updated");
+  const handlePolicyAdded = (createdPolicy) => {
+    setPolicies((prev) => [...prev, createdPolicy]);
+    toast.success("Policy added successfully");
   };
 
   const activeCount = policies.filter((p) => p.status === "active").length;
@@ -196,215 +151,246 @@ export default function Dashboard() {
   ).length;
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-gray-900 overflow-hidden">
-      <Toaster position="top-right" toastOptions={{ className: 'text-sm font-medium' }} />
+    <div className="relative min-h-screen flex bg-gradient-to-br from-indigo-50 via-white to-purple-50 overflow-hidden">
+      {/* Floating background shapes */}
+      <motion.div
+        animate={{ opacity: [0.2, 0.3, 0.2], scale: [1, 1.05, 1] }}
+        transition={{ duration: 6, repeat: Infinity }}
+        className="absolute top-[-100px] left-[-120px] w-[400px] h-[400px] bg-indigo-300 rounded-full blur-3xl opacity-30"
+      />
+      <motion.div
+        animate={{ opacity: [0.2, 0.3, 0.2], scale: [1.05, 1, 1.05] }}
+        transition={{ duration: 8, repeat: Infinity }}
+        className="absolute bottom-[-150px] right-[-120px] w-[500px] h-[500px] bg-purple-300 rounded-full blur-3xl opacity-30"
+      />
+
+      <Toaster position="top-right" />
 
       {/* Sidebar */}
-      <aside className="hidden md:flex w-72 flex-col bg-white border-r border-gray-200 shadow-sm z-20">
-        {/* Logo Area */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-100">
-          <div className="flex items-center gap-2 text-indigo-600">
-            <div className="bg-indigo-600 p-1.5 rounded-lg">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold tracking-tight text-gray-900">
-              Insura<span className="text-indigo-600">AI</span>
-            </span>
+      <aside className="hidden md:flex w-64 bg-white/70 backdrop-blur-lg border-r flex-col shadow-lg">
+        <div className="p-6">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="text-indigo-600" />
+            <h1 className="text-xl font-bold text-indigo-600">InsuraAI</h1>
           </div>
         </div>
-
-        {/* Nav Links */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active />
-          <SidebarItem icon={<PieChart size={20} />} label="Analytics" />
-          <SidebarItem icon={<FileText size={20} />} label="Documents" />
-          <SidebarItem icon={<Settings size={20} />} label="Settings" />
-        </nav>
-
-        {/* User Profile Section */}
-        <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group relative">
-            <img 
-              src={user.avatar || getAvatarUrl(user.name)} 
-              alt="User" 
-              className="w-10 h-10 rounded-full object-cover border border-gray-200 bg-white"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            </div>
-            
-            {/* Logout Button (Appears on hover) */}
-            <button 
-              onClick={logout}
-              className="absolute inset-0 bg-red-50/95 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl text-red-600 font-medium gap-2 shadow-inner"
-            >
-              <LogOut size={16} /> Logout
-            </button>
+        <nav className="flex-1 p-4 text-sm">
+          <div className="mb-2 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-700 font-medium">
+            Dashboard
           </div>
+          <div className="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            Analytics
+          </div>
+          <div className="px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            Settings
+          </div>
+        </nav>
+        <div className="p-4 border-t">
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-600 border border-red-500 rounded-lg hover:bg-red-50 transition"
+          >
+            <LogOut className="w-4 h-4" /> Logout
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Background Patterns */}
-        <div className="absolute inset-0 pointer-events-none z-0 opacity-40">
-            <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-indigo-50/50 to-transparent" />
-        </div>
+      {/* Main */}
+      <main className="flex-1 relative z-10">
+        <header className="sticky top-0 bg-white/70 backdrop-blur border-b z-10">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <h2 className="text-2xl font-bold tracking-tight text-indigo-700">
+              My Policies
+            </h2>
 
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 py-3 bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10">
-           <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-           
-           <div className="flex items-center gap-4">
-             <button 
-               onClick={() => setShowForm(true)}
-               className="hidden md:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm hover:shadow-md"
-             >
-               <Plus size={18} />
-               Add New Policy
-             </button>
-             
-             {/* Mobile Add Button */}
-             <button 
-               onClick={() => setShowForm(true)}
-               className="md:hidden flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-full shadow-lg"
-             >
-               <Plus size={20} />
-             </button>
-           </div>
-        </header>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 z-0">
-          <div className="max-w-6xl mx-auto space-y-8">
-            
-            {/* Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <StatCard 
-                label="Total Policies" 
-                value={policies.length} 
-                icon={<FileText className="text-indigo-600" />} 
-                trend="+2 this month"
-              />
-              <StatCard 
-                label="Active Coverage" 
-                value={activeCount} 
-                icon={<ShieldCheck className="text-emerald-600" />} 
-                trend="100% secured"
-                trendColor="text-emerald-600"
-              />
-              <StatCard 
-                label="Renewals Due" 
-                value={dueSoonCount} 
-                icon={<AlertCircle className="text-amber-600" />} 
-                trend="Within 15 days"
-                trendColor="text-amber-600"
-                highlight={dueSoonCount > 0}
-              />
-            </div>
-
-            {/* Filters & Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-               {/* Search */}
-               <div className="relative w-full md:w-72">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                 <input 
-                   type="text" 
-                   placeholder="Search policies..." 
-                   value={query}
-                   onChange={(e) => setQuery(e.target.value)}
-                   className="w-full pl-9 pr-4 py-2 bg-gray-50 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-0 rounded-lg text-sm transition-all"
-                 />
-               </div>
-
-               {/* Filter Tabs */}
-               <div className="flex items-center bg-gray-100 p-1 rounded-lg w-full md:w-auto overflow-x-auto no-scrollbar">
-                 {["all", "active", "expired", "pending"].map((status) => (
-                   <button
-                     key={status}
-                     onClick={() => setStatusFilter(status)}
-                     className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
-                       statusFilter === status 
-                         ? "bg-white text-indigo-600 shadow-sm" 
-                         : "text-gray-500 hover:text-gray-700"
-                     }`}
-                   >
-                     {status.charAt(0).toUpperCase() + status.slice(1)}
-                   </button>
-                 ))}
-               </div>
-
-               {/* Sort Dropdown */}
-               <div className="relative w-full md:w-auto">
-                 <div className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 cursor-pointer hover:border-indigo-300">
-                   <Filter className="w-4 h-4" />
-                   <select 
-                     value={sortKey} 
-                     onChange={(e) => setSortKey(e.target.value)}
-                     className="bg-transparent border-none focus:ring-0 p-0 text-sm cursor-pointer w-full md:w-auto"
-                   >
-                     <option value="endDateAsc">Expiring Soonest</option>
-                     <option value="endDateDesc">Expiring Latest</option>
-                     <option value="premiumHigh">Highest Premium</option>
-                     <option value="premiumLow">Lowest Premium</option>
-                   </select>
-                 </div>
-               </div>
-            </div>
-
-            {/* Policy Grid */}
-            {loading ? (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {[1,2,3].map(i => (
-                   <div key={i} className="h-64 bg-gray-200 rounded-2xl animate-pulse" />
-                 ))}
-               </div>
-            ) : filteredSorted.length === 0 ? (
-               <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
-                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                   <ShieldCheck className="w-8 h-8 text-gray-300" />
-                 </div>
-                 <h3 className="text-lg font-medium text-gray-900">No policies found</h3>
-                 <p className="text-gray-500 text-sm">Try adjusting your filters or add a new policy.</p>
-               </div>
-            ) : (
-               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                 <AnimatePresence>
-                   {filteredSorted.map((policy) => (
-                     <PolicyCard 
-                       key={policy._id} 
-                       policy={policy} 
-                       daysLeft={daysLeft(policy.endDate)}
-                       onRenew={renewPolicy}
-                       onDelete={deletePolicy}
-                     />
-                   ))}
-                 </AnimatePresence>
-               </div>
-            )}
-
-            {/* Mobile User Logout */}
-            <div className="md:hidden mt-8 pt-6 border-t border-gray-200">
-              <div className="flex items-center gap-3 mb-4">
-                <img src={user.avatar || getAvatarUrl(user.name)} className="w-10 h-10 rounded-full" alt="" />
-                <div>
-                  <p className="font-semibold text-gray-900">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-9 pr-3 py-2 rounded-lg border w-72 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Search by policy # or type"
+                />
               </div>
-              <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-3 text-red-600 border border-red-200 rounded-xl bg-red-50">
-                <LogOut size={16} /> Log Out
+
+              <div className="flex rounded-lg border overflow-hidden">
+                {["all", "active", "expired", "pending"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-3 py-2 text-sm capitalize ${
+                      statusFilter === s
+                        ? "bg-indigo-600 text-white"
+                        : "bg-white hover:bg-gray-50"
+                    } ${s !== "pending" ? "border-r" : ""}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value)}
+                  className="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="endDateAsc">End date ↑</option>
+                  <option value="endDateDesc">End date ↓</option>
+                  <option value="premiumHigh">Premium high → low</option>
+                  <option value="premiumLow">Premium low → high</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
+              >
+                <PlusCircle className="w-5 h-5" /> Add Policy
               </button>
             </div>
-
           </div>
+        </header>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <StatCard
+              title="Total Policies"
+              value={policies.length}
+              icon={<ShieldCheck className="w-5 h-5" />}
+              gradient="from-indigo-500 to-purple-500"
+            />
+            <StatCard
+              title="Active"
+              value={activeCount}
+              icon={<CalendarClock className="w-5 h-5" />}
+              gradient="from-emerald-500 to-teal-500"
+            />
+            <StatCard
+              title="Due Soon (≤15d)"
+              value={dueSoonCount}
+              icon={<AlertTriangle className="w-5 h-5" />}
+              gradient="from-amber-500 to-orange-500"
+            />
+          </div>
+
+          {loading ? (
+            <SkeletonGrid />
+          ) : filteredSorted.length === 0 ? (
+            <EmptyState onAdd={() => setShowForm(true)} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredSorted.map((policy) => {
+                const left = daysLeft(policy.endDate);
+                const dueSoon = policy.status === "active" && left <= 15;
+                return (
+                  <motion.div
+                    key={policy._id}
+                    whileHover={{ y: -4 }}
+                    className="rounded-2xl border shadow-md bg-white/80 backdrop-blur-lg p-5 transition"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-indigo-700">
+                          {policy.policyNumber}
+                        </h3>
+                        <p className="text-sm text-gray-500">{policy.type}</p>
+                      </div>
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          policy.status === "active"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : policy.status === "expired"
+                            ? "bg-rose-100 text-rose-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {policy.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <InfoRow label="Premium" value={`₹${policy.premiumAmount ?? "-"}`} />
+                      <InfoRow label="Sum Insured" value={`₹${policy.sumInsured ?? "-"}`} />
+                      <InfoRow label="Deductible" value={`₹${policy.deductible ?? "-"}`} />
+                      <InfoRow
+                        label="Start"
+                        value={new Date(policy.startDate).toLocaleDateString()}
+                      />
+                      <InfoRow
+                        label="End"
+                        value={new Date(policy.endDate).toLocaleDateString()}
+                      />
+                      {typeof left === "number" && (
+                        <InfoRow
+                          label="Days Left"
+                          value={
+                            <span
+                              className={`px-2 py-0.5 rounded ${
+                                dueSoon
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-gray-100 text-gray-700"
+                              }`}
+                            >
+                              {left >= 0 ? `${left} days` : "Expired"}
+                            </span>
+                          }
+                        />
+                      )}
+                    </div>
+
+                    {/* Actions Section */}
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {/* View Document Button */}
+                      {policy.fileUrl && (
+                        <a
+  href={policy.fileUrl}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-indigo-500 text-indigo-600 hover:bg-indigo-50 transition"
+>
+  📄 View Document
+</a>
+
+
+                      )}
+                      <button
+                        onClick={() => renewPolicy(policy._id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <RefreshCw className="w-4 h-4" /> Renew
+                      </button>
+                      <button
+                        onClick={() => deletePolicy(policy._id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                      >
+                        <Trash2 className="w-4 h-4" /> Delete
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
+        {/* 👇 Mobile Logout Button (shown only on small screens) */}
+<div className="md:hidden mt-10 flex justify-center pb-10">
+  <button
+    onClick={logout}
+    className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-red-600 border border-red-500 rounded-lg hover:bg-red-50 transition"
+  >
+    <LogOut className="w-4 h-4" /> Logout
+  </button>
+</div>
+
       </main>
 
       {showForm && (
         <AddPolicyModal
-          token={localStorage.getItem("token")}
+          token={token}
           onClose={() => setShowForm(false)}
           onSave={handlePolicyAdded}
         />
@@ -413,130 +399,70 @@ export default function Dashboard() {
   );
 }
 
-// --- Sub-Components ---
-function SidebarItem({ icon, label, active }) {
-  return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
-      active 
-        ? "bg-indigo-50 text-indigo-700 font-medium" 
-        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-    }`}>
-      {icon}
-      <span className="text-sm">{label}</span>
-    </div>
-  );
-}
+/* ---------- Small Components ---------- */
 
-function StatCard({ label, value, icon, trend, trendColor = "text-gray-500", highlight }) {
+function StatCard({ title, value, icon, gradient }) {
   return (
-    <div className={`bg-white p-5 rounded-xl border ${highlight ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'} shadow-sm`}>
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <p className="text-sm text-gray-500 font-medium">{label}</p>
-          <h3 className="text-2xl font-bold text-gray-900 mt-1">{value}</h3>
-        </div>
-        <div className={`p-2.5 rounded-lg ${highlight ? 'bg-amber-100' : 'bg-gray-50'}`}>
-          {icon}
-        </div>
-      </div>
-      <p className={`text-xs font-medium ${trendColor}`}>{trend}</p>
-    </div>
-  );
-}
-
-function PolicyCard({ policy, daysLeft, onRenew, onDelete }) {
-  const isExpiringSoon = policy.status === 'active' && daysLeft <= 30;
-  const isExpired = daysLeft < 0;
-
-  return (
-    <motion.div 
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group flex flex-col"
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      className="relative overflow-hidden rounded-2xl border bg-white shadow-md"
     >
-      {/* Card Header */}
-      <div className="p-5 pb-4">
-        <div className="flex justify-between items-start mb-3">
-          <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-            <ShieldCheck size={20} />
-          </div>
-          <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full uppercase tracking-wide ${
-            policy.status === 'active' 
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-              : 'bg-gray-100 text-gray-600 border border-gray-200'
-          }`}>
-            {policy.status}
-          </span>
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10`} />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">{title}</p>
+          <div className="p-2 rounded-lg bg-white shadow">{icon}</div>
         </div>
-        
-        <h3 className="text-lg font-bold text-gray-900 truncate mb-1">{policy.type}</h3>
-        <p className="text-xs text-gray-400 font-mono">{policy.policyNumber}</p>
-      </div>
-
-      {/* Data Points */}
-      <div className="px-5 py-3 bg-gray-50/50 border-y border-gray-100 grid grid-cols-2 gap-y-3 gap-x-4">
-        <div>
-          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Premium</p>
-          <p className="text-sm font-semibold text-gray-900">₹{policy.premiumAmount?.toLocaleString()}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Sum Insured</p>
-          <p className="text-sm font-semibold text-gray-900">₹{policy.sumInsured?.toLocaleString()}</p>
-        </div>
-        <div className="col-span-2">
-           <div className="flex justify-between items-center">
-             <div>
-                <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Expires On</p>
-                <p className="text-sm font-medium text-gray-700">
-                  {new Date(policy.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
-             </div>
-             <div className={`text-right ${isExpiringSoon ? 'text-amber-600' : isExpired ? 'text-red-600' : 'text-emerald-600'}`}>
-                <p className="text-xs font-bold">
-                  {isExpired ? 'Expired' : `${daysLeft} Days left`}
-                </p>
-             </div>
-           </div>
-           {/* Progress Bar */}
-           {!isExpired && (
-             <div className="w-full h-1.5 bg-gray-200 rounded-full mt-2 overflow-hidden">
-               <div 
-                 className={`h-full rounded-full ${isExpiringSoon ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                 style={{ width: `${Math.max(0, Math.min(100, (daysLeft / 365) * 100))}%` }}
-               />
-             </div>
-           )}
-        </div>
-      </div>
-
-      {/* Action Footer */}
-      <div className="p-4 mt-auto flex gap-2">
-        {policy.fileUrl && (
-          <a 
-            href={policy.fileUrl} 
-            target="_blank" 
-            rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-          >
-            <FileText size={14} /> Doc
-          </a>
-        )}
-        <button 
-          onClick={() => onRenew(policy._id)}
-          className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw size={14} /> Renew
-        </button>
-        <button 
-          onClick={() => onDelete(policy._id)}
-          className="flex items-center justify-center p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-          title="Delete Policy"
-        >
-          <Trash2 size={16} />
-        </button>
+        <p className="mt-2 text-3xl font-bold text-indigo-700">{value}</p>
       </div>
     </motion.div>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="font-medium">{value}</span>
+    </div>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-2xl border bg-white p-5 animate-pulse">
+          <div className="h-4 w-40 bg-gray-200 rounded" />
+          <div className="mt-2 h-3 w-24 bg-gray-200 rounded" />
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((__, j) => (
+              <div key={j} className="h-3 bg-gray-200 rounded" />
+            ))}
+          </div>
+          <div className="mt-5 h-9 bg-gray-200 rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ onAdd }) {
+  return (
+    <div className="border rounded-2xl p-10 bg-white/80 backdrop-blur-lg text-center shadow-md">
+      <div className="mx-auto w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-3">
+        <ShieldCheck className="text-indigo-600" />
+      </div>
+      <h3 className="text-lg font-semibold text-indigo-700">No policies yet</h3>
+      <p className="text-gray-500 mt-1">
+        Get started by adding your first policy via manual entry or AI scan.
+      </p>
+      <button
+        onClick={onAdd}
+        className="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+      >
+        <PlusCircle className="w-4 h-4" /> Add Policy
+      </button>
+    </div>
   );
 }
