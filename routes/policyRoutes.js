@@ -1,7 +1,7 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import Policy from "../models/policy.js";
-import { sendEmail } from "../config/email.js";
+import { sendEmail } from "../src/config/email.js";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
