@@ -14,7 +14,6 @@ import { sendEmail } from "./src/config/email.js";
 import authRoutes from "./routes/authRoutes.js";
 import extractRoutes from "./routes/extractRoutes.js";
 
-// NEW imports
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import { connectRedis } from "./src/config/redisClient.js";
@@ -23,30 +22,28 @@ connectDB();
 
 const app = express();
 
-// Add your production origin here (exact scheme + host)
 const allowedOrigins = [
   "https://insura-ai-pi.vercel.app",
-  "https://insuraai.onrender.com", // <-- added deployed domain (exact origin)
+  "https://insuraai.onrender.com",
   "http://localhost:5173",
+  "http://127.0.0.1:5173" 
 ];
 
-// Global rate limiter (tweak values as needed)
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 200, // max requests per IP per window
+  windowMs: 60 * 1000,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// CORS middleware (keep this before any route handlers)
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (mobile apps, curl, etc.)
+      
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log("❌ Blocked by CORS:", origin);
+        console.log("⚠️ Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -55,26 +52,17 @@ app.use(
   })
 );
 
-// parse JSON bodies
 app.use(express.json());
 app.use(morgan("dev"));
-
-// NEW middleware
 app.use(cookieParser());
 app.use(globalLimiter);
 
-// -------------------- COOP (allow google popup postMessage) --------------------
-// Place this BEFORE routes so GSI popup can communicate back via postMessage.
-// Note: we use 'same-origin-allow-popups' to keep COOP protection but permit popups to call back.
+
 app.use((req, res, next) => {
-  // If your hosting/edge already sets a COOP header, adjust there instead.
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  // Do NOT set Cross-Origin-Embedder-Policy unless you know you need it; it can break many libs.
   next();
 });
-// -------------------------------------------------------------------------------
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/policies", policyRoutes);
 app.use("/api/extractRoutes", extractRoutes);
@@ -87,14 +75,12 @@ cron.schedule("0 0 * * *", async () => {
     console.log("⏳ Running daily policy jobs...");
     const now = new Date();
 
-    // 1️⃣ Expire old policies
     const expiredPolicies = await Policy.updateMany(
       { endDate: { $lt: now }, status: "active" },
       { $set: { status: "expired" } }
     );
     console.log(`✅ Expired policies: ${expiredPolicies.modifiedCount}`);
 
-    // 2️⃣ Send renewal reminders
     const reminders = await Policy.find({
       renewalDueDate: { $lte: now },
       status: "active",
@@ -115,7 +101,6 @@ cron.schedule("0 0 * * *", async () => {
         );
       }
     }
-    console.log(`🔔 Renewal reminders sent: ${reminders.length}`);
   } catch (err) {
     console.error("❌ Cron job error:", err.message);
   }
@@ -123,10 +108,13 @@ cron.schedule("0 0 * * *", async () => {
 
 const PORT = process.env.PORT || 5000;
 
-// wrap startup so we can await redis connection
 async function start() {
   try {
-    await connectRedis();
+    await connectRedis().catch(err => {
+        console.warn("⚠️ REDIS CONNECTION FAILED: OTP features will not work.");
+        console.warn("   Error:", err.message);
+    });
+    
     app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
   } catch (err) {
     console.error("Failed to start server:", err);
