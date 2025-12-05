@@ -2,7 +2,11 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import User from "../models/user.js";
-import { googleSignIn, requestOtp, verifyOtpHandler } from "../src/controllers/authController.js";
+// IMPORT 1: Add getMe to imports from authController.js
+import { googleSignIn, requestOtp, verifyOtpHandler, getMe } from "../src/controllers/authController.js";
+// IMPORT 2: Import the protect middleware
+import { protect } from "../middleware/authMiddleware.js";
+
 
 const router = express.Router();
 
@@ -33,6 +37,8 @@ router.post("/request-otp", requestOtpLimiter, requestOtp);
 router.post("/verify-otp", verifyOtpLimiter, verifyOtpHandler);
 
 router.post("/google", googleSignIn);
+
+router.route("/me").get(protect, getMe);
 
 router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
