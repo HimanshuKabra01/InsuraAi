@@ -320,3 +320,28 @@ export async function googleSignIn(req, res) {
   }
 }
 
+export async function getMe(req, res) {
+  try {
+    // Select all fields except the password (and ensure email/phone are included)
+    const userProfile = await User.findById(req.user._id).select('-password'); 
+
+    if (!userProfile) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Return the profile object
+    return res.json({
+      _id: userProfile._id,
+      name: userProfile.name,
+      email: userProfile.email, // Explicitly include email
+      phone: userProfile.phone, // Explicitly include phone
+      avatar: userProfile.picture, // Assuming 'picture' is the field for avatar URL
+      isEmailVerified: userProfile.isEmailVerified,
+      provider: userProfile.provider,
+      createdAt: userProfile.createdAt,
+    });
+  } catch (error) {
+    console.error("getMe error:", error);
+    return res.status(500).json({ error: "Server error fetching user profile" });
+  }
+}

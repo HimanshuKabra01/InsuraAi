@@ -23,8 +23,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [policies, setPolicies] = useState([]);
   const [user, setUser] = useState({ 
-    name: "Loading...", 
-    email: "...", 
+    name: "", 
+    email: "", 
     avatar: null 
   });
   const [loading, setLoading] = useState(true);
@@ -230,10 +230,16 @@ export default function Dashboard() {
               className="w-10 h-10 rounded-full object-cover border border-gray-200 bg-white"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {loading 
+                  ? "Loading User..." 
+                  : (user.name || user.email || user.phone || "User") // Prioritize Name, then Email, then Phone
+                }
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {loading ? "Fetching data..." : user.email || user.phone || 'N/A'}
+              </p>
             </div>
-            
             {/* Logout Button (Appears on hover) */}
             <button 
               onClick={logout}
