@@ -11,15 +11,13 @@ dotenv.config()
 const router = express.Router();
 
 
-// Create new policy
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ✅ Configure multer to use Cloudinary
-// ✅ Cloudinary configuration
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
@@ -38,10 +36,6 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-
-
-
-// 🟢 Create new policy (with optional document upload)
 router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const {
@@ -54,7 +48,7 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       endDate,
     } = req.body;
 
-    // Prevent duplicates for the same user
+    
     const policyExists = await Policy.findOne({
       policyNumber,
       createdBy: req.user.id,
@@ -63,21 +57,18 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "Policy number already exists" });
     }
 
-    // Auto-set renewal date 15 days before end date
     const renewalDueDate = new Date(endDate);
     renewalDueDate.setDate(renewalDueDate.getDate() - 15);
 
-    // ✅ Clean numeric fields (remove commas, % symbols, and extra spaces)
     const cleanNumber = (value) => {
       if (!value) return 0;
       return Number(
         String(value)
-          .replace(/[,₹$%]/g, "") // remove commas, currency, percentage
+          .replace(/[,₹$%]/g, "") 
           .trim()
       );
     };
 
-    // Build new policy object
     const policyData = {
       policyNumber,
       type,
@@ -94,9 +85,8 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
     console.log("Sanitized policy data:", policyData);
     console.log("Received file:", req.file);
 
-    // ✅ If file uploaded, attach Cloudinary URL instead of local path
     if (req.file && req.file.path) {
-      policyData.fileUrl = req.file.path; // Cloudinary auto-returns hosted URL
+      policyData.fileUrl = req.file.path; 
     }
 
     const policy = new Policy(policyData);
@@ -109,9 +99,6 @@ router.post("/", authMiddleware, upload.single("file"), async (req, res) => {
   }
 });
 
-
-
-// Get all policies for logged-in user
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const policies = await Policy.find({ createdBy: req.user.id });
@@ -122,7 +109,6 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-// Get single policy by ID
 router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const policy = await Policy.findOne({ _id: req.params.id, createdBy: req.user.id });
@@ -134,7 +120,6 @@ router.get("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// Delete policy
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const policy = await Policy.findOneAndDelete({ _id: req.params.id, createdBy: req.user.id });
@@ -145,7 +130,6 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-// Update policy
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const { type, premiumAmount, startDate, endDate, status } = req.body;
@@ -155,7 +139,6 @@ router.put("/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: "Policy not found" });
     }
 
-    // Update only the provided fields
     if (type) policy.type = type;
     if (premiumAmount) policy.premiumAmount = premiumAmount;
     if (sumInsured) policy.sumInsured = sumInsured;
@@ -171,36 +154,26 @@ router.put("/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-// @route   POST /api/policies/:id/renew
-// @desc    Renew a policy (extend by 6 months)
-// @access  Private
 router.post("/:id/renew", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find the policy
     const policy = await Policy.findById(id);
     if (!policy) {
       return res.status(404).json({ error: "Policy not found" });
     }
 
-    // Check ownership (only creator can renew)
     if (policy.createdBy.toString() !== req.user.id) {
       return res.status(403).json({ error: "Not authorized to renew this policy" });
     }
 
-    // Extend endDate by 6 months
     const newEndDate = new Date(policy.endDate);
     newEndDate.setMonth(newEndDate.getMonth() + 6);
-
-    // Set renewalDueDate = 15 days before new endDate
     const newRenewalDueDate = new Date(newEndDate);
     newRenewalDueDate.setDate(newRenewalDueDate.getDate() - 15);
-
-    // Update policy
     policy.endDate = newEndDate;
     policy.renewalDueDate = newRenewalDueDate;
-    policy.status = "active"; // reset status if it was expired
+    policy.status = "active"; 
 
     await policy.save();
 
@@ -216,24 +189,19 @@ router.post("/:id/renew", authMiddleware, async (req, res) => {
 router.post("/:id/remind", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Find policy
     const policy = await Policy.findById(id).populate("createdBy", "email name");
     if (!policy) {
       return res.status(404).json({ error: "Policy not found" });
     }
 
-    // Only the creator can send a reminder (or you can skip this check if agents can do it)
     if (policy.createdBy._id.toString() !== req.user.id) {
       return res.status(403).json({ error: "Not authorized to send reminder" });
     }
 
-    // Ensure user has an email
     if (!policy.createdBy?.email) {
       return res.status(400).json({ error: "User has no email on file" });
     }
 
-    // Send reminder email
     await sendEmail(
       policy.createdBy.email,
       "Policy Renewal Reminder",

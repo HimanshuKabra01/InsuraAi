@@ -2,16 +2,16 @@ import mongoose from "mongoose";
 
 const policySchema = new mongoose.Schema({
   policyNumber: { type: String, required: true, unique: true },
-  type: { type: String, required: true }, // e.g., Health, Life, Car, Travel
+  type: { type: String, required: true }, 
   premiumAmount: { type: Number, required: true },
   sumInsured: { type: Number, required: false },
   deductible: { type: Number, required: false },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   renewalDueDate: { type: Date, required: true },
-  fileUrl : { type: String, required: false }, // URL to the policy document
+  fileUrl : { type: String, required: false },
   status: { type: String, enum: ["active", "expired", "pending"], default: "active" },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true } // links to user
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true } 
 }, { timestamps: true,
     collection : "policies"
   });

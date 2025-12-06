@@ -47,7 +47,6 @@ export default function Signup() {
         container.style.display = "none";
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -58,7 +57,6 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // --- PASSWORD SIGNUP (Name + Email + Password) ---
       if (authMethod === "password") {
         const res = await fetch(`${API_URL}/api/auth/signup`, {
           method: "POST",
@@ -74,12 +72,10 @@ export default function Signup() {
           setMessage("error: " + (data.error || "Signup failed"));
         }
       } 
-      // --- OTP SIGNUP (Phone Only) ---
       else {
         const identifierPayload = { phone: formData.phone, via: "sms" };
 
         if (!otpSent) {
-          // STEP 1: Request OTP
           const res = await fetch(`${API_URL}/api/auth/request-otp`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -94,7 +90,6 @@ export default function Signup() {
             setMessage("error: " + (errData.error || "Failed to send OTP"));
           }
         } else {
-          // STEP 2: Verify OTP
           const verifyPayload = { ...identifierPayload, otp: formData.otp };
           const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
             method: "POST",

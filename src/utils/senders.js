@@ -1,4 +1,4 @@
-// src/utils/senders.js
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -7,9 +7,6 @@ import nodemailer from "nodemailer";
 
 const OTP_TTL_SECONDS = process.env.OTP_TTL_SECONDS || 300;
 
-/**
- * Returns a Twilio client if credentials are present, otherwise null.
- */
 function getTwilioClient() {
   const sid = process.env.TWILIO_SID;
   const token = process.env.TWILIO_TOKEN;
@@ -22,24 +19,17 @@ function getTwilioClient() {
   }
 }
 
-/**
- * Send OTP via Twilio SMS.
- * Prefers Messaging Service SID if provided (no 'from' number needed).
- * Falls back to console logging in dev mode when Twilio isn't configured.
- */
 export async function sendOtpSms(phone, otp) {
   const client = getTwilioClient();
   const from = process.env.TWILIO_FROM;
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
-  // Dev fallback when Twilio not configured
   if (!client) {
     console.warn("Twilio not configured — falling back to console log for SMS.");
     console.log(`[DEV OTP SMS] to=${phone} otp=${otp} (expires in ${OTP_TTL_SECONDS}s)`);
     return { ok: true, dev: true, otp };
   }
 
-  // Validate phone input (basic)
   if (!phone || typeof phone !== "string") {
     throw new Error("Invalid phone number for sendOtpSms");
   }
@@ -61,19 +51,13 @@ export async function sendOtpSms(phone, otp) {
     }
 
     const msg = await client.messages.create(params);
-    // Twilio returns a message object; keep minimal info
     return { ok: true, sid: msg.sid, status: msg.status };
   } catch (err) {
-    // bubble Twilio errors with context
     console.error("Twilio send error:", err?.message || err);
     throw new Error("Failed to send SMS via Twilio: " + (err?.message || "unknown"));
   }
 }
 
-/**
- * Send OTP via Email using nodemailer (SMTP).
- * Falls back to console logging when SMTP not configured.
- */
 export async function sendOtpEmail(email, otp) {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
@@ -90,7 +74,7 @@ export async function sendOtpEmail(email, otp) {
   const transporter = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465, // true for 465
+    secure: port === 465,
     auth: { user, pass },
   });
 

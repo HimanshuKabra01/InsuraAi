@@ -25,7 +25,7 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    // Updated Section Background: Using a subtle gradient to match Hero theme
+    
     <section id="how" className="py-24 px-6 bg-gradient-to-tr from-purple-50 via-white to-indigo-50 relative overflow-hidden">
       
       {/* --- Background Floating Blobs (Synced with Hero style) --- */}
@@ -74,7 +74,7 @@ export default function HowItWorks() {
   );
 }
 
-/* --- Internal Sub-Component for individual Steps (No changes here) --- */
+
 function StepItem({ step, index }) {
   return (
     <motion.div

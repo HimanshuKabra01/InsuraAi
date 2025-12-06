@@ -1,4 +1,4 @@
-// config/email.js
+
 import dotenv from "dotenv";
 dotenv.config();
 import nodemailer from "nodemailer";
@@ -21,7 +21,6 @@ export const sendEmail = async (to, subject, html) => {
       to,
       subject,
       html,
-      // ✅ Force HTML MIME type
       headers: {
         "Content-Type": "text/html; charset=UTF-8",
       },

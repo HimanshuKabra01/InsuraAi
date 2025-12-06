@@ -18,7 +18,7 @@ const features = [
     title: "Smart Reminders",
     desc: "Never pay a late fee again. Our AI predicts renewal dates and nudges you via WhatsApp or SMS.",
     icon: Bell,
-    color: "text-purple-600", // Changed to Purple to match Hero theme
+    color: "text-purple-600", 
     bg: "bg-purple-50",
     delay: 0.2,
   },
@@ -27,7 +27,7 @@ const features = [
     title: "1-Click Renewals",
     desc: "Connect your provider once and renew policies instantly without re-entering your details.",
     icon: Zap,
-    color: "text-blue-600", // Changed to Blue/Indigo theme
+    color: "text-blue-600", 
     bg: "bg-blue-50",
     delay: 0.3,
   },
@@ -45,14 +45,11 @@ const features = [
 export default function Features() {
   return (
     <section id="features" className="relative py-24 px-6 bg-white overflow-hidden font-['Outfit',_sans-serif]">
-      {/* --- Background Elements (Synced with Hero) --- */}
-      
-      {/* 1. The Grid Pattern */}
       <div className="absolute inset-0 z-0 opacity-40 pointer-events-none" 
            style={{ backgroundImage: 'radial-gradient(#4f46e5 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}>
       </div>
 
-      {/* 2. Floating Blobs (positioned to frame the content) */}
+      
       <motion.div
         animate={{ y: [0, -30, 0], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}

@@ -51,7 +51,6 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/extractRoutes/extract`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }, 
-        // NOTE: Do NOT set Content-Type here either
         body: formDataObj,
       });
 
@@ -79,8 +78,6 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
       setLoading(false);
     }
   };
-
-  // --- SAVE POLICY LOGIC (The Fix is Here) ---
   const handleAddPolicy = async (e) => {
     if (e) e.preventDefault();
     setLoading(true);
@@ -88,26 +85,22 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
     try {
       const formDataObj = new FormData();
       
-      // Append all text fields
       Object.keys(formData).forEach((key) => {
-        // Ensure we don't send "undefined" or "null" strings
         const value = formData[key] || ""; 
         formDataObj.append(key, value);
       });
 
-      // Append file if it exists (Only for scan tab, or if user uploaded one in manual)
       if (file && activeTab === 'scan') {
         formDataObj.append("file", file);
       }
 
-      console.log("Sending Data..."); // Debug log
+      console.log("Sending Data..."); 
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/policies`, {
         method: "POST",
         headers: { 
             Authorization: `Bearer ${token}` 
-            // ❌ CRITICAL: Do NOT add 'Content-Type': 'multipart/form-data'
-            // The browser adds this automatically with the correct boundary
+            
         },
         body: formDataObj,
       });
@@ -115,7 +108,6 @@ export default function AddPolicyModal({ onClose, onSave, token }) {
       const result = await res.json();
 
       if (res.ok) {
-        // Success!
         onSave(result); 
         onClose();
       } else {

@@ -1,4 +1,4 @@
-// src/config/redisClient.js
+
 import Redis from "redis";
 import dotenv from "dotenv";
 dotenv.config();

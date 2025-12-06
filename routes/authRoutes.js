@@ -2,9 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import User from "../models/user.js";
-// IMPORT 1: Add getMe to imports from authController.js
 import { googleSignIn, requestOtp, verifyOtpHandler, getMe } from "../src/controllers/authController.js";
-// IMPORT 2: Import the protect middleware
 import { protect } from "../middleware/authMiddleware.js";
 
 

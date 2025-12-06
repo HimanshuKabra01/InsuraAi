@@ -22,7 +22,6 @@ router.post("/extract", upload.single("file"), async (req, res) => {
     console.log("📄 File uploaded:", req.file.originalname);
     let rawText = "";
 
-    // 1️⃣ Extract text from file (PDF or image)
     if (req.file.mimetype === "application/pdf") {
       console.log("📑 Processing as PDF...");
       const pdfBuffer = fs.readFileSync(req.file.path);
@@ -36,7 +35,6 @@ router.post("/extract", upload.single("file"), async (req, res) => {
 
     console.log("📝 Extracted text sample:", rawText.slice(0, 200), "...");
 
-    // 2️⃣ Ask GPT to extract key policy fields
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -70,7 +68,6 @@ router.post("/extract", upload.single("file"), async (req, res) => {
       ],
     });
 
-    // 3️⃣ Parse GPT response safely
     let extracted = {};
     let content = response.choices[0].message.content.trim();
     if (content.startsWith("```")) {
@@ -84,7 +81,6 @@ router.post("/extract", upload.single("file"), async (req, res) => {
       extracted = {};
     }
 
-    // 4️⃣ Backup regex-based extraction (fallback)
     if (!extracted.policyNumber) {
       const match = rawText.match(/Policy\s*(No|Number|ID)[:\-]?\s*([A-Za-z0-9\-]+)/i);
       if (match) extracted.policyNumber = match[2];
@@ -113,7 +109,6 @@ router.post("/extract", upload.single("file"), async (req, res) => {
       if (match) extracted.deductible = match[1].replace(/,/g, "");
     }
 
-    // 5️⃣ Clean up uploaded file
     fs.unlinkSync(req.file.path);
 
     res.json(extracted);
