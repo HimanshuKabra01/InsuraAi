@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 
-const protect = async (req, res, next) => {
+// Renamed the function back to 'authMiddleware'
+const authMiddleware = async (req, res, next) => {
     let token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
@@ -20,5 +21,4 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ error: "Not authorized, no token" });
     }
 };
-
-export { protect };
+export default authMiddleware;

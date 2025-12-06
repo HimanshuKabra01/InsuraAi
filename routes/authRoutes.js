@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
 import User from "../models/user.js";
 import { googleSignIn, requestOtp, verifyOtpHandler, getMe } from "../src/controllers/authController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect  from "../middleware/authMiddleware.js";
 
 
 const router = express.Router();
